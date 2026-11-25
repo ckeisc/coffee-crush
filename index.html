@@ -23,20 +23,31 @@
   #scene{position:fixed; inset:0; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;} #scene canvas{display:block; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-user-drag:none; touch-action:none;}
   #board2d{position:fixed; inset:0; display:none; touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-user-drag:none;}
   .plate{background:var(--plate); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);}
-  #hud-top{position:fixed; top:10px; left:10px; right:10px; z-index:20; display:flex; justify-content:center; pointer-events:none;}
+  #hud-top{position:fixed; top:10px; left:10px; right:10px; z-index:20; display:flex; justify-content:center; pointer-events:none; filter:none; -webkit-filter:none; backdrop-filter:none; -webkit-backdrop-filter:none;}
   #hud-top>*{pointer-events:auto;}
-  /* Top bar: background and text live in separate sibling layers.
-     The translucent plate fill + backdrop blur sit ONLY on
-     .topbar-bg (an empty, text-free div); the Level / Orders /
-     Moves text renders in .topbar-content above it with no mask,
-     no filter, no backdrop-filter and full opacity. Sharing the
-     blurred / semi-transparent layer with the glyphs made iOS
-     Safari (page and PWA) rasterise the text without subpixel
-     antialiasing, so it read as blurry. */
-  #info-bar{position:relative; padding:8px 16px 10px; width:min(560px, calc(100vw - 20px)); text-align:center; background:transparent; border:none; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none;}
-  .topbar-bg{position:absolute; inset:0; background:var(--plate); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); pointer-events:none;}
-  .topbar-content{position:relative; z-index:1; opacity:1; -webkit-font-smoothing:subpixel-antialiased; text-rendering:optimizeLegibility;}
-  .info-line1{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-weight:900; font-size:15px;}
+  #hud-top>.topbar-bg{pointer-events:none;}
+  /* Top bar: background and text live in fully separate layers.
+     v3 re-audit for the iPhone Safari/PWA blur that survived v2:
+     · No text-shadow, no filter, no mask and no opacity < 1 exists
+       on the title text or any ancestor — verified, and now pinned
+       explicitly (filter:none / text-shadow:none) on the whole
+       chain below so nothing can inherit one.
+     · The one remaining source was structural: in v2 the blurred
+       plate (.topbar-bg) was a CHILD of #info-bar, the title's own
+       parent, and iOS Safari can flatten parent + backdrop-filtered
+       child into a single compositing layer and rasterise the
+       glyphs in it without subpixel antialiasing. The plate is now
+       a sibling of #info-bar (a direct child of #hud-top, outside
+       the title's parent entirely), the title layers carry
+       isolation:isolate, and boot forces one clean re-raster of the
+       title after the first frame (see __ccRerasterTopbar) — the
+       same fix shape as Globe Game v61. Look is unchanged: same
+       plate fill, border, radius, shadow and backdrop blur, drawn
+       by the sibling layer over exactly the bar's box. */
+  #info-bar{position:relative; z-index:1; isolation:isolate; padding:8px 16px 10px; width:min(560px, calc(100vw - 20px)); text-align:center; background:transparent; border:none; box-shadow:none; opacity:1; filter:none; -webkit-filter:none; backdrop-filter:none; -webkit-backdrop-filter:none; text-shadow:none;}
+  .topbar-bg{position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%); width:min(560px, calc(100vw - 20px)); background:var(--plate); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); pointer-events:none;}
+  .topbar-content{position:relative; z-index:1; isolation:isolate; opacity:1; filter:none; -webkit-filter:none; text-shadow:none; -webkit-font-smoothing:subpixel-antialiased; text-rendering:optimizeLegibility;}
+  .info-line1{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-weight:900; font-size:15px; filter:none; -webkit-filter:none; text-shadow:none;}
   .info-line1 .lvl{color:#b85c14;} .info-line1 .score{font-variant-numeric:tabular-nums;}
   .info-line1 .moves{color:#1f7a6d; font-variant-numeric:tabular-nums;}
   #progress{height:9px; background:rgba(120,80,40,.18); border-radius:99px; margin-top:7px; overflow:hidden;}
@@ -113,6 +124,7 @@
   .slot .tick{position:absolute; right:4px; bottom:2px; font-size:clamp(11px, 3.4vw, 13px); font-weight:900; color:#1f7a6d; text-shadow:0 1px 0 rgba(255,255,255,.6);}
   .slot.done{opacity:.5;}
   .slot.empty{background:transparent;}
+  .build-mark{margin:14px 0 0; text-align:center; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--ink-dim);}
   .menu-sec{font-size:11px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-dim); margin:12px 0 7px;}
   .menu-sec:first-child{margin-top:0;}
   .menu-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
@@ -139,6 +151,7 @@
     #menu-panel{left:6px; right:6px; width:auto; bottom:64px;}
     #info-panel{left:6px; right:6px; width:auto; bottom:64px;}
     #info-bar{padding:7px 10px 9px; width:calc(100vw - 12px);}
+    .topbar-bg{width:calc(100vw - 12px);}
     .info-line1{font-size:13.5px; gap:6px;}
     #orders{top:66px;}
     #combo{top:clamp(150px, calc(78px + 25vw), 180px);}
@@ -154,8 +167,8 @@
 <canvas id="board2d" aria-label="Coffee Crush board (flat mode)"></canvas>
 
 <div id="hud-top">
+  <div class="topbar-bg" aria-hidden="true"></div>
   <div id="info-bar" aria-label="Level info">
-    <div class="topbar-bg" aria-hidden="true"></div>
     <div class="topbar-content">
       <div class="info-line1">
         <span class="lvl">☕ Level <span id="level-num">1</span></span>
@@ -192,6 +205,7 @@
     <b>🧾 Orders:</b> the trays above the board are customer orders, arriving in a set sequence. Each match serves one of its treats into a tray that needs it — clear three beans, serve one bean. Finish a tray and it stamps itself <b>✓ Shipped!</b>, flies out with a bonus, and the next order slides in — serve <b>every</b> order in the level's sequence before your moves run out to pass the level.<br>
     <b>⏱ Expiry (Level 2+):</b> Level 1 orders have no timer — take your time. From Level 2 up, the timer in a tray's lower-right corner counts down to when that order expires — it turns red for the last 10 seconds. An expired order leaves the counter, the next order takes its place, and the expired one comes back later in the sequence.
   </p>
+  <p class="build-mark">Coffee Crush · v3</p>
 </div>
 
 <div id="menu-panel" class="plate" hidden>
@@ -204,6 +218,7 @@
     <button id="btn-help" class="icon-btn"><span class="btn-ico">?</span><span>Help</span></button>
     <button id="btn-new" class="icon-btn"><span class="btn-ico">✦</span><span>New board</span></button>
   </div>
+  <p class="build-mark">Coffee Crush · v3</p>
 </div>
 
 <div class="overlay" id="win-overlay">
@@ -1114,6 +1129,25 @@ $('btn-next').addEventListener('click',function(){ startLevel(Math.min(state.lev
 document.addEventListener('keydown',function(e){ if(e.key==='h'||e.key==='H') $('btn-hint').click(); });
 
 /* ---------- boot ---------- */
+/* Force one clean re-raster of the top-bar title after boot.
+   iOS Safari rasterises the fixed top bar once at load — while the
+   WebGL canvas is starting — and can cache that first bitmap at low
+   quality without subpixel antialiasing; the static title layer over
+   the animating canvas then never invalidates it, so it stays soft
+   until some unrelated full-page re-composite (e.g. opening a menu)
+   forces a sharp re-raster. This reproduces that re-composite at
+   load: after the first frames render, a throwaway translateZ(0)
+   plus a forced reflow makes Safari re-raster the title sharply,
+   then the transform is removed so no filter/transform is left on
+   the title or any ancestor. */
+function rerasterTopbar(){
+  var el=document.querySelector('.topbar-content'); if(!el) return;
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    el.style.transform='translateZ(0)'; void el.offsetHeight;
+    requestAnimationFrame(function(){ el.style.transform=''; void el.offsetHeight; });
+  }); });
+}
+window.__ccRerasterTopbar=rerasterTopbar;
 var started=false;
 window.__ccStart=function(){
   if(started) return; started=true;
@@ -1125,6 +1159,7 @@ window.__ccStart=function(){
   buildLevelMenu();
   startLevel(0);
   view.start();
+  rerasterTopbar();
 };
 if(window.__threeReady||window.__threeFailed) window.__ccStart();
 else setTimeout(function(){ if(!started) window.__ccStart(); }, 2500);
