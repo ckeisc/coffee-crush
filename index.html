@@ -4,7 +4,25 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="color-scheme" content="light dark" />
-<link rel="icon" href="data:," />
+<meta name="description" content="Coffee Crush — a cozy coffee-shop match-3. Swap treats, serve every customer order before your moves run out." />
+<!-- PWA: manifest + theme. The manifest lives under assets/ (the
+     only folder served alongside index.html); its icon paths are
+     relative to the manifest, and start_url/scope use "../" so the
+     app root is the page itself on any host or sub-path. -->
+<link rel="manifest" href="assets/manifest.json" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fffbf3" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1d120b" />
+<meta name="mobile-web-app-capable" content="yes" />
+<!-- iOS home-screen app: Safari has no install prompt, so these
+     tags are what Share → Add to Home Screen uses — standalone
+     display, the app title under the icon, the status-bar style,
+     and the 180×180 touch icon. -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Coffee Crush" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png" />
 <title>Coffee Crush</title>
 <style>
   :root{
@@ -205,7 +223,7 @@
     <b>🧾 Orders:</b> the trays above the board are customer orders, arriving in a set sequence. Each match serves one of its treats into a tray that needs it — clear three beans, serve one bean. Finish a tray and it stamps itself <b>✓ Shipped!</b>, flies out with a bonus, and the next order slides in — serve <b>every</b> order in the level's sequence before your moves run out to pass the level.<br>
     <b>⏱ Expiry (Level 2+):</b> Level 1 orders have no timer — take your time. From Level 2 up, the timer in a tray's lower-right corner counts down to when that order expires — it turns red for the last 10 seconds. An expired order leaves the counter, the next order takes its place, and the expired one comes back later in the sequence.
   </p>
-  <p class="build-mark">Coffee Crush · v4 · updated 2026-11-25</p>
+  <p class="build-mark">Coffee Crush · v5 · updated 2026-11-26</p>
 </div>
 
 <div id="menu-panel" class="plate" hidden>
@@ -218,7 +236,7 @@
     <button id="btn-help" class="icon-btn"><span class="btn-ico">?</span><span>Help</span></button>
     <button id="btn-new" class="icon-btn"><span class="btn-ico">✦</span><span>New board</span></button>
   </div>
-  <p class="build-mark">Coffee Crush · v4 · updated 2026-11-25</p>
+  <p class="build-mark">Coffee Crush · v5 · updated 2026-11-26</p>
 </div>
 
 <div class="overlay" id="win-overlay">
