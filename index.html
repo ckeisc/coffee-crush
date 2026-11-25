@@ -25,7 +25,17 @@
   .plate{background:var(--plate); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);}
   #hud-top{position:fixed; top:10px; left:10px; right:10px; z-index:20; display:flex; justify-content:center; pointer-events:none;}
   #hud-top>*{pointer-events:auto;}
-  #info-bar{padding:8px 16px 10px; width:min(560px, calc(100vw - 20px)); text-align:center;}
+  /* Top bar: background and text live in separate sibling layers.
+     The translucent plate fill + backdrop blur sit ONLY on
+     .topbar-bg (an empty, text-free div); the Level / Orders /
+     Moves text renders in .topbar-content above it with no mask,
+     no filter, no backdrop-filter and full opacity. Sharing the
+     blurred / semi-transparent layer with the glyphs made iOS
+     Safari (page and PWA) rasterise the text without subpixel
+     antialiasing, so it read as blurry. */
+  #info-bar{position:relative; padding:8px 16px 10px; width:min(560px, calc(100vw - 20px)); text-align:center; background:transparent; border:none; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none;}
+  .topbar-bg{position:absolute; inset:0; background:var(--plate); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); pointer-events:none;}
+  .topbar-content{position:relative; z-index:1; opacity:1; -webkit-font-smoothing:subpixel-antialiased; text-rendering:optimizeLegibility;}
   .info-line1{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-weight:900; font-size:15px;}
   .info-line1 .lvl{color:#b85c14;} .info-line1 .score{font-variant-numeric:tabular-nums;}
   .info-line1 .moves{color:#1f7a6d; font-variant-numeric:tabular-nums;}
@@ -144,13 +154,16 @@
 <canvas id="board2d" aria-label="Coffee Crush board (flat mode)"></canvas>
 
 <div id="hud-top">
-  <div class="plate" id="info-bar" aria-label="Level info">
-    <div class="info-line1">
-      <span class="lvl">☕ Level <span id="level-num">1</span></span>
-      <span class="score">🧾 Orders <span id="orders-num">0/20</span></span>
-      <span class="moves">Moves <span id="moves-num">45</span></span>
+  <div id="info-bar" aria-label="Level info">
+    <div class="topbar-bg" aria-hidden="true"></div>
+    <div class="topbar-content">
+      <div class="info-line1">
+        <span class="lvl">☕ Level <span id="level-num">1</span></span>
+        <span class="score">🧾 Orders <span id="orders-num">0/20</span></span>
+        <span class="moves">Moves <span id="moves-num">45</span></span>
+      </div>
+      <div id="progress"><div id="progress-fill"></div></div>
     </div>
-    <div id="progress"><div id="progress-fill"></div></div>
   </div>
 </div>
 
