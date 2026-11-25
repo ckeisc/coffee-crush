@@ -44,37 +44,39 @@
   #hud-top{position:fixed; top:10px; left:10px; right:10px; z-index:20; display:flex; justify-content:center; pointer-events:none; filter:none; -webkit-filter:none; backdrop-filter:none; -webkit-backdrop-filter:none;}
   #hud-top>*{pointer-events:auto;}
   /* Top bar: background and text live in fully separate layers.
-     v4 re-audit for the iPhone Safari/PWA blur that survived v3:
-     · No text-shadow, no filter, no mask and no opacity < 1 exists
-       on the title text or any ancestor — verified, and pinned
-       explicitly (filter:none / text-shadow:none) on the whole
-       chain below so nothing can inherit one.
-     · v3 moved the blurred plate (.topbar-bg) out of #info-bar but
-       left it INSIDE #hud-top, the top bar's own container — and
-       iOS Safari can still flatten a container together with a
-       backdrop-filtered child into one compositing layer and
-       rasterise the title glyphs in it without subpixel
-       antialiasing. v4 removes the hazard instead of relocating
-       it: there is NO backdrop-filter anywhere in the top bar.
-       The plate keeps the Globe Game v61 placement — OUTSIDE the
-       top bar entirely, a direct child of <body>, a sibling of
-       #hud-top, fixed over the bar's box (its height is synced
-       to #info-bar from JS — see syncTopbarBg) — but its fill is
-       now the SOLID --plate-solid with backdrop-filter:none
-       pinned, so no blurred layer exists for Safari to flatten
-       with the title at all. The title layers keep
-       isolation:isolate, and boot forces clean re-rasters of the
-       title after the first actually rendered frame and again
-       ~500 ms later (see __ccRerasterTopbar). Look is effectively
-       unchanged: --plate-solid is the opaque twin of the old
-       translucent plate fill, with the same border, radius and
-       shadow; only the see-through frost behind the bar is gone. */
-  #info-bar{position:relative; z-index:1; isolation:isolate; padding:8px 16px 10px; width:min(560px, calc(100vw - 20px)); text-align:center; background:transparent; border:none; box-shadow:none; opacity:1; filter:none; -webkit-filter:none; backdrop-filter:none; -webkit-backdrop-filter:none; text-shadow:none;}
+     v7 re-audit for the iPhone Safari/PWA blur that survived v6:
+     v6 removed backdrop-filter from the top bar entirely (solid
+     --plate-solid fill on .topbar-bg, a direct child of <body>,
+     sibling of #hud-top, height synced to #info-bar from JS —
+     see syncTopbarBg) and the blur persisted, so backdrop-filter
+     was not the (only) cause. What v4–v6 all kept was layer
+     promotion of the title itself: isolation:isolate on #info-bar
+     and .topbar-content, plus the boot re-raster hack toggling
+     translateZ(0) on .topbar-content twice at boot. A promoted
+     compositing layer is rasterised by iOS Safari with grayscale
+     antialiasing only — no subpixel AA — and this one sits fixed
+     over the continuously repainting WebGL canvas, so the whole
+     top line (text AND emoji) renders soft while content below
+     stays sharp. v7 removes the promotion machinery instead of
+     adding more: NO isolation, NO transform toggle, NO re-raster
+     — the title renders in the page's normal layer, with
+     -webkit-font-smoothing:antialiased. No text-shadow, no
+     filter, no mask and no opacity < 1 exists on the title text
+     or any ancestor — verified, and pinned explicitly
+     (filter:none / text-shadow:none) on the whole chain below.
+     Also in v7: in dark mode the orange "Level" and teal "Moves"
+     spans use light variants (see the dark-scheme overrides
+     below) — the light-scheme values are dark-on-dark against
+     the dark plate and read even softer than they are. */
+  #info-bar{position:relative; z-index:1; padding:8px 16px 10px; width:min(560px, calc(100vw - 20px)); text-align:center; background:transparent; border:none; box-shadow:none; opacity:1; filter:none; -webkit-filter:none; backdrop-filter:none; -webkit-backdrop-filter:none; text-shadow:none;}
   .topbar-bg{position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:20; width:min(560px, calc(100vw - 20px)); height:54px; background:var(--plate-solid); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); backdrop-filter:none; -webkit-backdrop-filter:none; pointer-events:none;}
-  .topbar-content{position:relative; z-index:1; isolation:isolate; opacity:1; filter:none; -webkit-filter:none; text-shadow:none; -webkit-font-smoothing:subpixel-antialiased; text-rendering:optimizeLegibility;}
+  .topbar-content{position:relative; z-index:1; opacity:1; filter:none; -webkit-filter:none; text-shadow:none; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
   .info-line1{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-weight:900; font-size:15px; filter:none; -webkit-filter:none; text-shadow:none;}
   .info-line1 .lvl{color:#b85c14;} .info-line1 .score{font-variant-numeric:tabular-nums;}
   .info-line1 .moves{color:#1f7a6d; font-variant-numeric:tabular-nums;}
+  @media (prefers-color-scheme: dark){
+    .info-line1 .lvl{color:#f2a35e;} .info-line1 .moves{color:#4fd1c5;}
+  }
   #progress{height:9px; background:rgba(120,80,40,.18); border-radius:99px; margin-top:7px; overflow:hidden;}
   #progress-fill{height:100%; width:0%; background:linear-gradient(90deg,#f2a541,#e07b2a); border-radius:99px; transition:width .35s ease;}
   #hud-bottom{position:fixed; left:10px; right:10px; bottom:10px; z-index:20; display:flex; justify-content:center; pointer-events:none;}
@@ -230,7 +232,7 @@
     <b>🧾 Orders:</b> the trays above the board are customer orders, arriving in a set sequence. Each match serves one of its treats into a tray that needs it — clear three beans, serve one bean. Finish a tray and it stamps itself <b>✓ Shipped!</b>, flies out with a bonus, and the next order slides in — serve <b>every</b> order in the level's sequence before your moves run out to pass the level.<br>
     <b>⏱ Expiry (Level 2+):</b> Level 1 orders have no timer — take your time. From Level 2 up, the timer in a tray's lower-right corner counts down to when that order expires — it turns red for the last 10 seconds. An expired order leaves the counter, the next order takes its place, and the expired one comes back later in the sequence.
   </p>
-  <p class="build-mark">Coffee Crush · v6 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v7 · updated 2026-11-26</p>
 </div>
 
 <div id="menu-panel" class="plate" hidden>
@@ -243,7 +245,7 @@
     <button id="btn-help" class="icon-btn"><span class="btn-ico">?</span><span>Help</span></button>
     <button id="btn-new" class="icon-btn"><span class="btn-ico">✦</span><span>New board</span></button>
   </div>
-  <p class="build-mark">Coffee Crush · v6 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v7 · updated 2026-11-26</p>
 </div>
 
 <div class="overlay" id="win-overlay">
@@ -1165,34 +1167,26 @@ function syncTopbarBg(){
 }
 window.addEventListener('resize', syncTopbarBg);
 window.addEventListener('orientationchange', syncTopbarBg);
-/* Force one clean re-raster of the top-bar title after boot.
-   iOS Safari rasterises the fixed top bar once at load — while the
-   WebGL canvas is starting — and can cache that first bitmap at low
-   quality without subpixel antialiasing; the static title layer over
-   the animating canvas then never invalidates it, so it stays soft
-   until some unrelated full-page re-composite (e.g. opening a menu)
-   forces a sharp re-raster. This reproduces that re-composite at
-   load: a throwaway translateZ(0) plus a forced reflow makes Safari
-   re-raster the title sharply, then the transform is removed so no
-   filter/transform is left on the title or any ancestor.
-   Scheduling (v4): the toggle must not run before Safari's initial
-   raster settles, so it is fired (a) from a double-rAF queued AFTER
-   view.start() — the render loop's own rAF was queued first, so at
-   least one real frame has been drawn and presented by then — and
-   (b) once more ~500 ms after start, in case the first pass still
-   raced the loading-state raster. */
-function rerasterTopbar(){
-  var el=document.querySelector('.topbar-content'); if(!el) return;
-  el.style.transform='translateZ(0)'; void el.offsetHeight;
-  requestAnimationFrame(function(){ el.style.transform=''; void el.offsetHeight; });
-}
-window.__ccRerasterTopbar=rerasterTopbar;
+/* v7: the boot re-raster hack is GONE. v4–v6 toggled a throwaway
+   translateZ(0) on .topbar-content (plus a forced reflow) after the
+   first frame and again ~500 ms later, on the theory that Safari
+   had cached a low-quality first raster of the title. But the
+   toggle itself — together with isolation:isolate on the title
+   chain — is what promoted the title into its own iOS compositing
+   layer, where Safari rasterises text with grayscale AA only (no
+   subpixel AA) over the continuously repainting WebGL canvas; the
+   "cure" was keeping the title in the soft layer. The title now
+   stays in the page's normal layer (see the CSS note), and all
+   that remains to schedule at boot is the plate-height sync: once
+   after the first frames (double-rAF queued after view.start(), so
+   at least one real frame has been drawn) and once more ~500 ms
+   later, in case fonts/layout settled after the first pass. */
 function scheduleTopbarFix(){
   syncTopbarBg();
   requestAnimationFrame(function(){ requestAnimationFrame(function(){
-    syncTopbarBg(); rerasterTopbar();
+    syncTopbarBg();
   }); });
-  setTimeout(function(){ syncTopbarBg(); rerasterTopbar(); }, 500);
+  setTimeout(function(){ syncTopbarBg(); }, 500);
 }
 var started=false;
 window.__ccStart=function(){
