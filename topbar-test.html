@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Top-bar blur — isolation test</title>
+<style>
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#fff;color:#111;}
+  @media (prefers-color-scheme: dark){ body{background:#111;color:#eee;} }
+  header{padding:16px 16px 4px;}
+  header h1{font-size:20px;margin:0 0 8px;}
+  header p{font-size:14px;line-height:1.5;margin:6px 0;}
+  .marker{font-size:12px;font-weight:700;letter-spacing:.06em;opacity:.6;}
+  section{padding:14px 12px 10px;}
+  .vlabel{font-size:16px;font-weight:800;margin:0 0 2px;}
+  .vdesc{font-size:13px;opacity:.75;margin:0 0 8px;line-height:1.45;}
+  iframe{display:block;width:100%;height:180px;border:1px solid #999;border-radius:8px;background:#e8c9a0;}
+  .verdict{font-size:14px;margin:8px 0 0;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Top-bar blur — isolation test</h1>
+  <p>Open in Safari on iPhone on a fresh load. For each variant 1–6, note whether its top-bar text is <b>SHARP</b> or <b>BLURRY</b>. Compare with the plain label text above each frame — the label is the sharpness control. Screenshot the page.</p>
+  <p class="marker">Top-bar isolation test · 2026-11-26</p>
+</header>
+
+<section>
+  <p class="vlabel">Variant 1 — CONTROL: exact v7 top bar over a live repainting canvas</p>
+  <p class="vdesc">Same bar, same plate, same CSS as Coffee Crush v7. The canvas behind repaints every frame, like the game board. If this is blurry and Variant 2 is sharp, the live canvas is implicated.</p>
+  <iframe id="v1" title="Variant 1"></iframe>
+  <p class="verdict">Verdict: SHARP / BLURRY</p>
+</section>
+
+<section>
+  <p class="vlabel">Variant 2: exact v7 top bar over a static plain background (no canvas)</p>
+  <p class="vdesc">Identical bar, but no canvas at all behind it. If this is sharp while Variant 1 is blurry, the repainting canvas is the cause.</p>
+  <iframe id="v2" title="Variant 2"></iframe>
+  <p class="verdict">Verdict: SHARP / BLURRY</p>
+</section>
+
+<section>
+  <p class="vlabel">Variant 3: exact v7 top bar over a canvas that is present but NOT animating</p>
+  <p class="vdesc">Same canvas as Variant 1, but drawn once and never repainted. If this is sharp while Variant 1 is blurry, the continuous repainting (not the canvas itself) is the cause.</p>
+  <iframe id="v3" title="Variant 3"></iframe>
+  <p class="verdict">Verdict: SHARP / BLURRY</p>
+</section>
+
+<section>
+  <p class="vlabel">Variant 4: top bar with the plate REMOVED — bare text over the live repainting canvas</p>
+  <p class="vdesc">No .topbar-bg plate at all; the text sits directly on the live canvas. If this is sharp while Variant 1 is blurry, the plate layer is implicated after all.</p>
+  <iframe id="v4" title="Variant 4"></iframe>
+  <p class="verdict">Verdict: SHARP / BLURRY</p>
+</section>
+
+<section>
+  <p class="vlabel">Variant 5: exact v7 top bar but NOT fixed — in normal document flow, static background</p>
+  <p class="vdesc">Same bar and plate, but position:static instead of position:fixed, over a static background. If this is sharp while Variant 2 is blurry, the fixed positioning / fixed layer is the cause.</p>
+  <iframe id="v5" title="Variant 5"></iframe>
+  <p class="verdict">Verdict: SHARP / BLURRY</p>
+</section>
+
+<section>
+  <p class="vlabel">Variant 6 — SANITY BASELINE: plain unstyled text, system font, no plate, static background</p>
+  <p class="vdesc">The same words with no styling at all. This one should always be sharp — if even this is blurry, the problem is not in the page at all.</p>
+  <iframe id="v6" title="Variant 6"></iframe>
+  <p class="verdict">Verdict: SHARP / BLURRY</p>
+</section>
+
+<script>
+/* The top-bar CSS + markup below is copied VERBATIM from Coffee Crush v7
+   (~/workspace/ts-spaces/coffee-rush-3d/index.html): same variables,
+   same #hud-top / #info-bar / .topbar-bg / .topbar-content /
+   .info-line1 rules, same colours, fonts, sizes, line-heights,
+   same viewport meta, same dark-mode colours. Nothing redesigned. */
+var TOPBAR_CSS = [
+  ':root{',
+  '  --ink:#3b2416; --ink-dim:#8a6a52; --plate:rgba(255,251,243,.92); --plate-solid:#fffbf3;',
+  '  --line:rgba(90,55,25,.16); --btn:#f3e6d3; --btn-h:#ead9bd; --accent:#e07b2a; --accent2:#2a9d8f;',
+  '  --shadow:0 10px 28px rgba(80,45,10,.22);',
+  '}',
+  '@media (prefers-color-scheme: dark){',
+  '  :root{ --ink:#f7e9d7; --ink-dim:#c9a888; --plate:rgba(38,24,16,.92); --plate-solid:#2e1f14;',
+  '    --line:rgba(255,220,180,.16); --btn:#453122; --btn-h:#57402a; --shadow:0 10px 28px rgba(0,0,0,.5); }',
+  '}',
+  '*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}',
+  'html,body{height:100%;}',
+  'body{margin:0; overflow:hidden; background:#e8c9a0; font-family:ui-rounded,system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink);}',
+  '@media (prefers-color-scheme: dark){ body{background:#1d120b;} }',
+  '#cv{position:fixed; inset:0; width:100%; height:100%; display:block;}',
+  '#hud-top{position:fixed; top:10px; left:10px; right:10px; z-index:20; display:flex; justify-content:center; pointer-events:none; filter:none; -webkit-filter:none; backdrop-filter:none; -webkit-backdrop-filter:none;}',
+  '#hud-top>*{pointer-events:auto;}',
+  '#info-bar{position:relative; z-index:1; padding:8px 16px 10px; width:min(560px, calc(100vw - 20px)); text-align:center; background:transparent; border:none; box-shadow:none; opacity:1; filter:none; -webkit-filter:none; backdrop-filter:none; -webkit-backdrop-filter:none; text-shadow:none;}',
+  '.topbar-bg{position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:20; width:min(560px, calc(100vw - 20px)); height:54px; background:var(--plate-solid); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); backdrop-filter:none; -webkit-backdrop-filter:none; pointer-events:none;}',
+  '.topbar-content{position:relative; z-index:1; opacity:1; filter:none; -webkit-filter:none; text-shadow:none; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}',
+  '.info-line1{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-weight:900; font-size:15px; filter:none; -webkit-filter:none; text-shadow:none;}',
+  '.info-line1 .lvl{color:#b85c14;} .info-line1 .score{font-variant-numeric:tabular-nums;}',
+  '.info-line1 .moves{color:#1f7a6d; font-variant-numeric:tabular-nums;}',
+  '@media (prefers-color-scheme: dark){',
+  '  .info-line1 .lvl{color:#f2a35e;} .info-line1 .moves{color:#4fd1c5;}',
+  '}',
+  '#progress{height:9px; background:rgba(120,80,40,.18); border-radius:99px; margin-top:7px; overflow:hidden;}',
+  '#progress-fill{height:100%; width:0%; background:linear-gradient(90deg,#f2a541,#e07b2a); border-radius:99px;}',
+  '@media (max-width:640px){',
+  '  #hud-top{top:6px; left:6px; right:6px;}',
+  '  #info-bar{padding:7px 10px 9px; width:calc(100vw - 12px);}',
+  '  .topbar-bg{top:6px; width:calc(100vw - 12px);}',
+  '  .info-line1{font-size:13.5px; gap:6px;}',
+  '}',
+  '@media (max-width:360px){',
+  '  .info-line1{font-size:12.5px;}',
+  '}'
+].join('\n');
+
+var TOPBAR_HTML = [
+  '<div class="topbar-bg" aria-hidden="true"></div>',
+  '<div id="hud-top">',
+  '  <div id="info-bar" aria-label="Level info">',
+  '    <div class="topbar-content">',
+  '      <div class="info-line1">',
+  '        <span class="lvl">\u2615 Level <span>1</span></span>',
+  '        <span class="score">\uD83E\uDDFE Orders <span>0/20</span></span>',
+  '        <span class="moves">Moves <span>45</span></span>',
+  '      </div>',
+  '      <div id="progress"><div id="progress-fill"></div></div>',
+  '    </div>',
+  '  </div>',
+  '</div>'
+].join('\n');
+
+var CANVAS_JS_LIVE = [
+  '<script>',
+  'var cv=document.getElementById("cv"),cx=cv.getContext("2d");',
+  'function size(){var d=Math.min(window.devicePixelRatio||1,2);cv.width=cv.clientWidth*d;cv.height=cv.clientHeight*d;}',
+  'size(); window.addEventListener("resize",size);',
+  'var t0=performance.now();',
+  'var COLS=["#e07b2a","#2a9d8f","#f27ba7","#57b3a2","#e8a33d","#d92b3a"];',
+  'function draw(now){var t=(now-t0)/1000;var w=cv.width,h=cv.height;',
+  '  cx.fillStyle="#eed3ac";cx.fillRect(0,0,w,h);',
+  '  for(var i=0;i<6;i++){var x=(Math.sin(t*0.7+i*1.3)*0.5+0.5)*w;var y=(Math.cos(t*0.5+i)*0.5+0.5)*h;',
+  '    cx.beginPath();cx.arc(x,y,30+10*Math.sin(t+i),0,7);cx.fillStyle=COLS[i];cx.fill();}',
+  '  requestAnimationFrame(draw);}',
+  'requestAnimationFrame(draw);',
+  '<\/script>'
+].join('\n');
+
+var CANVAS_JS_STATIC = [
+  '<script>',
+  'var cv=document.getElementById("cv"),cx=cv.getContext("2d");',
+  'function size(){var d=Math.min(window.devicePixelRatio||1,2);cv.width=cv.clientWidth*d;cv.height=cv.clientHeight*d;}',
+  'size();',
+  'var COLS=["#e07b2a","#2a9d8f","#f27ba7","#57b3a2","#e8a33d","#d92b3a"];',
+  'var w=cv.width,h=cv.height;',
+  'cx.fillStyle="#eed3ac";cx.fillRect(0,0,w,h);',
+  'for(var i=0;i<6;i++){var x=(Math.sin(i*1.3)*0.5+0.5)*w;var y=(Math.cos(i)*0.5+0.5)*h;',
+  '  cx.beginPath();cx.arc(x,y,30,0,7);cx.fillStyle=COLS[i];cx.fill();}',
+  '<\/script>'
+].join('\n');
+
+function doc(extraCss, body, script){
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">'
+    + '<meta name="color-scheme" content="light dark">'
+    + '<style>' + TOPBAR_CSS + (extraCss || '') + '</style></head><body>'
+    + body + (script || '') + '</body></html>';
+}
+
+var V5_CSS = '#hud-top{position:static; margin:10px 10px 0;} .topbar-bg{position:absolute; top:10px;}';
+
+var V6_BODY = '<div style="padding:14px 16px; font-size:15px; font-weight:900; font-family:system-ui,-apple-system,\'Segoe UI\',sans-serif;">'
+  + '\u2615 Level 1 &nbsp;&nbsp; \uD83E\uDDFE Orders 0/20 &nbsp;&nbsp; Moves 45</div>';
+
+document.getElementById('v1').srcdoc = doc('', '<canvas id="cv"></canvas>' + TOPBAR_HTML, CANVAS_JS_LIVE);
+document.getElementById('v2').srcdoc = doc('', TOPBAR_HTML, '');
+document.getElementById('v3').srcdoc = doc('', '<canvas id="cv"></canvas>' + TOPBAR_HTML, CANVAS_JS_STATIC);
+document.getElementById('v4').srcdoc = doc('', '<canvas id="cv"></canvas>' + TOPBAR_HTML.replace('<div class="topbar-bg" aria-hidden="true"></div>\n', ''), CANVAS_JS_LIVE);
+document.getElementById('v5').srcdoc = doc(V5_CSS, TOPBAR_HTML, '');
+document.getElementById('v6').srcdoc = doc('', V6_BODY, '');
+</script>
+</body>
+</html>
