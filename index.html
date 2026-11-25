@@ -24,12 +24,48 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png" />
 <title>Coffee Crush</title>
+<script>
+/* PWA standalone detection — runs before first paint so the layout
+   below is already in place when the page first renders. iOS home-
+   screen apps report navigator.standalone; everything else answers
+   the display-mode media query. When standalone, <html> gets the
+   .standalone class and the CSS moves the whole top stack (info
+   bar, order trays, combo pill) down by --pwa-top-shift: iOS 26
+   draws a Liquid Glass blur band across the top ~107pt of every
+   standalone web app and offers web pages no switch to hide it
+   (native apps use scrollView.topEdgeEffect.isHidden; there is no
+   CSS/JS equivalent), so the only remedy is to keep content out of
+   the band. In a browser tab nothing changes. The media-query
+   listener covers a mode change without reload and nudges both
+   board views to re-measure the (moved) order-tray row. */
+(function(){
+  var mq=null;
+  try{ mq=window.matchMedia('(display-mode: standalone)'); }catch(e){}
+  function apply(){
+    var standalone=(window.navigator&&window.navigator.standalone===true)||(mq&&mq.matches);
+    document.documentElement.classList.toggle('standalone', !!standalone);
+    if(window.__ccStandaloneApplied) window.dispatchEvent(new Event('resize'));
+    window.__ccStandaloneApplied=true;
+  }
+  apply();
+  if(mq){ if(mq.addEventListener) mq.addEventListener('change', apply); else if(mq.addListener) mq.addListener(apply); }
+})();
+</script>
 <style>
   :root{
     --ink:#3b2416; --ink-dim:#8a6a52; --plate:rgba(255,251,243,.92); --plate-solid:#fffbf3;
     --line:rgba(90,55,25,.16); --btn:#f3e6d3; --btn-h:#ead9bd; --accent:#e07b2a; --accent2:#2a9d8f;
     --shadow:0 10px 28px rgba(80,45,10,.22);
+    /* Extra top offset for the whole top stack, standalone only
+       (see the detection script above): 118px puts the info bar's
+       top edge at ~124–128px, below the measured ~107pt iOS 26
+       glass band, with the trays and board following under it.
+       The pure-CSS media query is the no-JS twin of the .standalone
+       class — either one turns the shift on. */
+    --pwa-top-shift:0px;
   }
+  @media (display-mode: standalone){ :root{ --pwa-top-shift:118px; } }
+  html.standalone{ --pwa-top-shift:118px; }
   @media (prefers-color-scheme: dark){
     :root{ --ink:#f7e9d7; --ink-dim:#c9a888; --plate:rgba(38,24,16,.92); --plate-solid:#2e1f14;
       --line:rgba(255,220,180,.16); --btn:#453122; --btn-h:#57402a; --shadow:0 10px 28px rgba(0,0,0,.5); }
@@ -41,7 +77,7 @@
   #scene{position:fixed; inset:0; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;} #scene canvas{display:block; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-user-drag:none; touch-action:none;}
   #board2d{position:fixed; inset:0; display:none; touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-user-drag:none;}
   .plate{background:var(--plate); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);}
-  #hud-top{position:fixed; top:10px; left:10px; right:10px; z-index:20; display:flex; justify-content:center; pointer-events:none; filter:none; -webkit-filter:none; backdrop-filter:none; -webkit-backdrop-filter:none;}
+  #hud-top{position:fixed; top:calc(10px + var(--pwa-top-shift)); left:10px; right:10px; z-index:20; display:flex; justify-content:center; pointer-events:none; filter:none; -webkit-filter:none; backdrop-filter:none; -webkit-backdrop-filter:none;}
   #hud-top>*{pointer-events:auto;}
   /* Top bar: background and text live in fully separate layers.
      v7 re-audit for the iPhone Safari/PWA blur that survived v6:
@@ -69,7 +105,7 @@
      below) — the light-scheme values are dark-on-dark against
      the dark plate and read even softer than they are. */
   #info-bar{position:relative; z-index:1; padding:8px 16px 10px; width:min(560px, calc(100vw - 20px)); text-align:center; background:transparent; border:none; box-shadow:none; opacity:1; filter:none; -webkit-filter:none; backdrop-filter:none; -webkit-backdrop-filter:none; text-shadow:none;}
-  .topbar-bg{position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:20; width:min(560px, calc(100vw - 20px)); height:54px; background:var(--plate-solid); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); backdrop-filter:none; -webkit-backdrop-filter:none; pointer-events:none;}
+  .topbar-bg{position:fixed; top:calc(10px + var(--pwa-top-shift)); left:50%; transform:translateX(-50%); z-index:20; width:min(560px, calc(100vw - 20px)); height:54px; background:var(--plate-solid); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); backdrop-filter:none; -webkit-backdrop-filter:none; pointer-events:none;}
   .topbar-content{position:relative; z-index:1; opacity:1; filter:none; -webkit-filter:none; text-shadow:none; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
   .info-line1{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-weight:900; font-size:15px; filter:none; -webkit-filter:none; text-shadow:none;}
   .info-line1 .lvl{color:#b85c14;} .info-line1 .score{font-variant-numeric:tabular-nums;}
@@ -86,14 +122,14 @@
   button:hover{background:var(--btn-h);} button:active{transform:scale(.96);} button:disabled{opacity:.4;}
   button.primary{background:var(--accent); color:#fff; border-color:transparent;}
   button.icon-btn{font-size:19px; min-width:48px; padding:8px 12px; line-height:1;}
-  #combo{position:fixed; top:clamp(158px, calc(84px + 25vw), 186px); left:50%; transform:translateX(-50%) scale(.8); z-index:25; padding:8px 18px; border-radius:999px; font-weight:900; font-size:17px; color:#b85c14; opacity:0; transition:all .18s; pointer-events:none;}
+  #combo{position:fixed; top:calc(clamp(158px, calc(84px + 25vw), 186px) + var(--pwa-top-shift)); left:50%; transform:translateX(-50%) scale(.8); z-index:25; padding:8px 18px; border-radius:999px; font-weight:900; font-size:17px; color:#b85c14; opacity:0; transition:all .18s; pointer-events:none;}
   #combo.show{opacity:1; transform:translateX(-50%) scale(1);}
   #toast{position:fixed; bottom:86px; left:50%; transform:translateX(-50%); z-index:30; padding:9px 18px; border-radius:18px; font-weight:900; font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s; white-space:normal; overflow-wrap:break-word; text-align:center; line-height:1.3; width:max-content; max-width:92vw;}
   #toast.show{opacity:1;}
   #float-score{position:fixed; z-index:26; font-weight:900; font-size:22px; color:#e07b2a; text-shadow:0 2px 0 #fff, 0 4px 12px rgba(0,0,0,.25); pointer-events:none; opacity:0;}
-  #menu-panel{position:fixed; right:10px; bottom:74px; z-index:35; width:min(360px, calc(100vw - 20px)); max-height:calc(100dvh - 170px); overflow:auto; padding:14px; border-radius:16px;}
+  #menu-panel{position:fixed; right:10px; bottom:74px; z-index:35; width:min(360px, calc(100vw - 20px)); max-height:calc(100dvh - 170px - var(--pwa-top-shift)); overflow:auto; padding:14px; border-radius:16px;}
   #menu-panel[hidden]{display:none;}
-  #info-panel{position:fixed; left:10px; bottom:74px; z-index:35; width:min(360px, calc(100vw - 20px)); max-height:calc(100dvh - 170px); overflow:auto; padding:14px; border-radius:16px;}
+  #info-panel{position:fixed; left:10px; bottom:74px; z-index:35; width:min(360px, calc(100vw - 20px)); max-height:calc(100dvh - 170px - var(--pwa-top-shift)); overflow:auto; padding:14px; border-radius:16px;}
   #info-panel[hidden]{display:none;}
   /* Order trays — fluid, viewport-sized: the row is a 3-column grid
      capped at 396px and never wider than the viewport minus gutters,
@@ -102,7 +138,7 @@
      tray (width-driven height via aspect-ratio). The expiry timer
      badge straddles the tray's lower-right corner, half in and half
      out, so it never covers a treat and adds no height to the row. */
-  #orders{position:fixed; top:74px; left:50%; transform:translateX(-50%); width:min(396px, calc(100vw - 12px)); z-index:19; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:clamp(6px, 2vw, 10px); padding:0; pointer-events:none;}
+  #orders{position:fixed; top:calc(74px + var(--pwa-top-shift)); left:50%; transform:translateX(-50%); width:min(396px, calc(100vw - 12px)); z-index:19; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:clamp(6px, 2vw, 10px); padding:0; pointer-events:none;}
   .tray{position:relative; min-width:0; width:100%; padding:clamp(6px, 1.8vw, 9px); border-radius:14px; transition:transform .3s ease, border-color .3s ease;}
   .tray .order-timer{position:absolute; right:6px; bottom:-7px; z-index:3; display:inline-flex; align-items:center; gap:2px; font-size:11px; font-weight:900; font-variant-numeric:tabular-nums; line-height:1; color:var(--ink-dim); background:var(--plate-solid); border:1px solid var(--line); box-shadow:0 3px 8px rgba(80,45,10,.25); padding:3px 6px; border-radius:999px; pointer-events:none; white-space:nowrap;}
   .tray .order-timer.urgent{color:#fff; background:#d92b3a; animation:timerPulse .55s ease-in-out infinite alternate;}
@@ -174,14 +210,14 @@
   .stars{font-size:36px; letter-spacing:6px; color:var(--accent);}
   .stars .off{color:transparent; -webkit-text-stroke:1.5px var(--ink-dim);}
   @media (max-width:640px){
-    #hud-top{top:6px; left:6px; right:6px;} #hud-bottom{bottom:6px; left:6px; right:6px;}
+    #hud-top{top:calc(6px + var(--pwa-top-shift)); left:6px; right:6px;} #hud-bottom{bottom:6px; left:6px; right:6px;}
     #menu-panel{left:6px; right:6px; width:auto; bottom:64px;}
     #info-panel{left:6px; right:6px; width:auto; bottom:64px;}
     #info-bar{padding:7px 10px 9px; width:calc(100vw - 12px);}
-    .topbar-bg{top:6px; width:calc(100vw - 12px);}
+    .topbar-bg{top:calc(6px + var(--pwa-top-shift)); width:calc(100vw - 12px);}
     .info-line1{font-size:13.5px; gap:6px;}
-    #orders{top:66px;}
-    #combo{top:clamp(150px, calc(78px + 25vw), 180px);}
+    #orders{top:calc(66px + var(--pwa-top-shift));}
+    #combo{top:calc(clamp(150px, calc(78px + 25vw), 180px) + var(--pwa-top-shift));}
   }
   @media (max-width:360px){
     .tray .order-timer{font-size:10px; padding:2px 5px; right:4px; bottom:-6px;}
@@ -232,7 +268,7 @@
     <b>🧾 Orders:</b> the trays above the board are customer orders, arriving in a set sequence. Each match serves one of its treats into a tray that needs it — clear three beans, serve one bean. Finish a tray and it stamps itself <b>✓ Shipped!</b>, flies out with a bonus, and the next order slides in — serve <b>every</b> order in the level's sequence before your moves run out to pass the level.<br>
     <b>⏱ Expiry (Level 2+):</b> Level 1 orders have no timer — take your time. From Level 2 up, the timer in a tray's lower-right corner counts down to when that order expires — it turns red for the last 10 seconds. An expired order leaves the counter, the next order takes its place, and the expired one comes back later in the sequence.
   </p>
-  <p class="build-mark">Coffee Crush · v7 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v8 · updated 2026-11-26</p>
 </div>
 
 <div id="menu-panel" class="plate" hidden>
@@ -245,7 +281,7 @@
     <button id="btn-help" class="icon-btn"><span class="btn-ico">?</span><span>Help</span></button>
     <button id="btn-new" class="icon-btn"><span class="btn-ico">✦</span><span>New board</span></button>
   </div>
-  <p class="build-mark">Coffee Crush · v7 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v8 · updated 2026-11-26</p>
 </div>
 
 <div class="overlay" id="win-overlay">
