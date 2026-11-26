@@ -66,14 +66,6 @@
      orange "Level" and teal "Moves" spans use light variants
      (see the dark-scheme overrides below) so they stay readable
      against the dark plate. */
-  /* Glass-effect probe (v16, TEST — remove later): a tiny label
-     pinned at top:5px, inside the region where the iOS glass /
-     scroll-edge effect would act if it were present. If the
-     effect is live it will blur this text; if the text renders
-     sharp, nothing is being applied over that strip. It is
-     pointer-events:none and fixed, so it never intercepts a
-     touch and never shifts any layout. */
-  #glass-probe{position:fixed; top:5px; left:0; right:0; z-index:50; text-align:center; pointer-events:none; font-size:12px; font-weight:600; line-height:1.2; color:#fff8ec; text-shadow:0 1px 3px rgba(40,20,5,.85), 0 0 2px rgba(40,20,5,.6);}
   #hud-top{position:fixed; top:40px; left:0; right:0; margin-left:auto; margin-right:auto; width:min(560px, calc(100vw - 20px)); z-index:20; padding:8px 16px 10px; text-align:center; background:var(--plate-solid); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow);}
   .info-line1{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-weight:900; font-size:15px; filter:none; -webkit-filter:none; text-shadow:none;}
   .info-line1 .lvl{color:#b85c14;} .info-line1 .score{font-variant-numeric:tabular-nums;}
@@ -191,10 +183,6 @@
 </style>
 </head>
 <body>
-<!-- Glass-effect probe (TEST, v16): renders "test test" in the
-     top strip so any glass effect over that region has something
-     to act on. Remove once the probe has served its purpose. -->
-<div id="glass-probe" aria-hidden="true">test test</div>
 <div id="scene" aria-label="Coffee Crush game board"></div>
 <canvas id="board2d" aria-label="Coffee Crush board (flat mode)"></canvas>
 
@@ -232,7 +220,7 @@
     <b>🧾 Orders:</b> the trays above the board are customer orders, arriving in a set sequence. Each match serves one of its treats into a tray that needs it — clear three beans, serve one bean. Finish a tray and it stamps itself <b>✓ Shipped!</b>, flies out with a bonus, and the next order slides in — serve <b>every</b> order in the level's sequence before your moves run out to pass the level.<br>
     <b>⏱ Expiry (Level 2+):</b> Level 1 orders have no timer — take your time. From Level 2 up, the timer in a tray's lower-right corner counts down to when that order expires — it turns red for the last 10 seconds. An expired order leaves the counter, the next order takes its place, and the expired one comes back later in the sequence.
   </p>
-  <p class="build-mark">Coffee Crush · v16 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v17 · updated 2026-11-26</p>
 </div>
 
 <div id="menu-panel" class="plate" hidden>
@@ -245,7 +233,7 @@
     <button id="btn-help" class="icon-btn"><span class="btn-ico">?</span><span>Help</span></button>
     <button id="btn-new" class="icon-btn"><span class="btn-ico">✦</span><span>New board</span></button>
   </div>
-  <p class="build-mark">Coffee Crush · v16 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v17 · updated 2026-11-26</p>
 </div>
 
 <div class="overlay" id="win-overlay">
