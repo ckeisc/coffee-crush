@@ -29,11 +29,11 @@
    below is already in place when the page first renders. iOS home-
    screen apps report navigator.standalone; everything else answers
    the display-mode media query. When standalone, <html> gets the
-   .standalone class. v11: the class no longer shifts anything —
-   --pwa-top-shift is 0px in every mode (see the :root note), so
-   the top bar sits at the normal top position, exactly like the
-   ruler page's bar that tested sharp on Joe's phone as an
-   installed PWA. The media-query listener covers a mode change
+   .standalone class. v12: the class restores the v9 standalone
+   shift — --pwa-top-shift is 56px in standalone (see the :root
+   note), so the whole top stack sits at the accepted v9 position
+   (~125pt) when installed, while Safari tabs stay at the normal
+   top position. (v11's 0px removal is now history.) The media-query listener covers a mode change
    without reload and nudges both board views to re-measure the
    order-tray row. */
 (function(){
@@ -54,21 +54,20 @@
     --ink:#3b2416; --ink-dim:#8a6a52; --plate:rgba(255,251,243,.92); --plate-solid:#fffbf3;
     --line:rgba(90,55,25,.16); --btn:#f3e6d3; --btn-h:#ead9bd; --accent:#e07b2a; --accent2:#2a9d8f;
     --shadow:0 10px 28px rgba(80,45,10,.22);
-    /* Extra top offset for the whole top stack. v11: REMOVED —
-       the shift is 0px in every mode, standalone included. The
-       ruler-page tests on Joe's phone (2026-11-26) showed a plain
-       fixed bar with a solid plate at top:0 renders sharp as an
-       installed PWA, over a live WebGL canvas, with no glass band
-       at any height — so the bar goes back to the normal top
-       position like the ruler's. The variable stays (at 0) so
-       every consumer — info bar, order trays, combo pill, panels,
-       board positioning — keeps its calc() untouched. The
-       pure-CSS media query is the no-JS twin of the .standalone
-       class; both now resolve to the same 0px. */
+    /* Extra top offset for the whole top stack. v12: restores the
+       v9 standalone shift — 56px when installed as a PWA, so the
+       whole top stack sits at the accepted v9 position (~125pt);
+       the :root default stays 0px, so Safari-tab layout is
+       unchanged. (v11 removed the shift to 0px in every mode; that
+       removal is now history.) Every consumer — info bar, order
+       trays, combo pill, panels, board positioning — follows the
+       variable through its calc(), so the whole stack moves down
+       together. The pure-CSS media query is the no-JS twin of the
+       .standalone class; both resolve to the same 56px. */
     --pwa-top-shift:0px;
   }
-  @media (display-mode: standalone){ :root{ --pwa-top-shift:0px; } }
-  html.standalone{ --pwa-top-shift:0px; }
+  @media (display-mode: standalone){ :root{ --pwa-top-shift:56px; } }
+  html.standalone{ --pwa-top-shift:56px; }
   @media (prefers-color-scheme: dark){
     :root{ --ink:#f7e9d7; --ink-dim:#c9a888; --plate:rgba(38,24,16,.92); --plate-solid:#2e1f14;
       --line:rgba(255,220,180,.16); --btn:#453122; --btn-h:#57402a; --shadow:0 10px 28px rgba(0,0,0,.5); }
@@ -261,7 +260,7 @@
     <b>🧾 Orders:</b> the trays above the board are customer orders, arriving in a set sequence. Each match serves one of its treats into a tray that needs it — clear three beans, serve one bean. Finish a tray and it stamps itself <b>✓ Shipped!</b>, flies out with a bonus, and the next order slides in — serve <b>every</b> order in the level's sequence before your moves run out to pass the level.<br>
     <b>⏱ Expiry (Level 2+):</b> Level 1 orders have no timer — take your time. From Level 2 up, the timer in a tray's lower-right corner counts down to when that order expires — it turns red for the last 10 seconds. An expired order leaves the counter, the next order takes its place, and the expired one comes back later in the sequence.
   </p>
-  <p class="build-mark">Coffee Crush · v11 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v12 · updated 2026-11-26</p>
 </div>
 
 <div id="menu-panel" class="plate" hidden>
@@ -274,7 +273,7 @@
     <button id="btn-help" class="icon-btn"><span class="btn-ico">?</span><span>Help</span></button>
     <button id="btn-new" class="icon-btn"><span class="btn-ico">✦</span><span>New board</span></button>
   </div>
-  <p class="build-mark">Coffee Crush · v11 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v12 · updated 2026-11-26</p>
 </div>
 
 <div class="overlay" id="win-overlay">
