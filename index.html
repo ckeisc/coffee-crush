@@ -29,11 +29,12 @@
    below is already in place when the page first renders. iOS home-
    screen apps report navigator.standalone; everything else answers
    the display-mode media query. When standalone, <html> gets the
-   .standalone class. v13: --pwa-top-shift is 0px in every mode
+   .standalone class. v14: --pwa-top-shift is 0px in every mode
    (see the :root note), so the top bar sits at the very top when
    installed, exactly where v11 blurred — this build tests the
-   first-paint sampling hypothesis (static placeholder text in
-   the bar, painted at first paint) against that position. The media-query listener covers a mode change
+   empty-board first-paint hypothesis: no gem meshes exist at
+   first paint (board frame + empty cells only), then the gems
+   fall in as a staggered cascade ~600 ms later. The media-query listener covers a mode change
    without reload and nudges both board views to re-measure the
    order-tray row. */
 (function(){
@@ -54,12 +55,13 @@
     --ink:#3b2416; --ink-dim:#8a6a52; --plate:rgba(255,251,243,.92); --plate-solid:#fffbf3;
     --line:rgba(90,55,25,.16); --btn:#f3e6d3; --btn-h:#ead9bd; --accent:#e07b2a; --accent2:#2a9d8f;
     --shadow:0 10px 28px rgba(80,45,10,.22);
-    /* Extra top offset for the whole top stack. v13: 0px in every
-       mode, standalone included — the bar returns to the top
-       position where v11 blurred, so the static-placeholder
-       first-paint test is decisive (v11 blurred there with
-       JS-painted text; if v13 is sharp there with the bar's text
-       hardcoded in the HTML, the sampling hypothesis holds).
+    /* Extra top offset for the whole top stack. v14: 0px in every
+       mode, standalone included — the bar stays at the top
+       position where v11 blurred, so the empty-board first-paint
+       test is decisive (v13 blurred there too, with the bar's
+       text already static; v14 instead removes the heavy part of
+       first paint entirely — the 64 gem meshes — and drops them
+       in after the page has settled).
        Safari-tab layout is unchanged (0px there too). Every
        consumer — info bar, order trays, combo pill, panels,
        board positioning — follows the variable through its
@@ -261,7 +263,7 @@
     <b>🧾 Orders:</b> the trays above the board are customer orders, arriving in a set sequence. Each match serves one of its treats into a tray that needs it — clear three beans, serve one bean. Finish a tray and it stamps itself <b>✓ Shipped!</b>, flies out with a bonus, and the next order slides in — serve <b>every</b> order in the level's sequence before your moves run out to pass the level.<br>
     <b>⏱ Expiry (Level 2+):</b> Level 1 orders have no timer — take your time. From Level 2 up, the timer in a tray's lower-right corner counts down to when that order expires — it turns red for the last 10 seconds. An expired order leaves the counter, the next order takes its place, and the expired one comes back later in the sequence.
   </p>
-  <p class="build-mark">Coffee Crush · v13 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v14 · updated 2026-11-26</p>
 </div>
 
 <div id="menu-panel" class="plate" hidden>
@@ -274,7 +276,7 @@
     <button id="btn-help" class="icon-btn"><span class="btn-ico">?</span><span>Help</span></button>
     <button id="btn-new" class="icon-btn"><span class="btn-ico">✦</span><span>New board</span></button>
   </div>
-  <p class="build-mark">Coffee Crush · v13 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v14 · updated 2026-11-26</p>
 </div>
 
 <div class="overlay" id="win-overlay">
@@ -661,15 +663,30 @@ function makeThreeView(){
 
   var boardGroup=new THREE.Group(); scene.add(boardGroup);
   function gridPos(r,c){ return {x:(c-(COLS-1)/2)*CELL, z:(r-(ROWS-1)/2)*CELL}; }
+  /* v14 intro drop easing: fast fall, then a small settle bounce
+     as the treat lands on the counter. */
+  function easeOutBounce(x){ var n1=7.5625, d1=2.75;
+    if(x<1/d1) return n1*x*x;
+    if(x<2/d1) return n1*(x-=1.5/d1)*x+0.75;
+    if(x<2.5/d1) return n1*(x-=2.25/d1)*x+0.9375;
+    return n1*(x-=2.625/d1)*x+0.984375; }
   var ray=new THREE.Raycaster(), pointer=new THREE.Vector2();
   var downInfo=null;
 
   var api={
     kind:'three',
-    spawn:function(cell,r,c,fromAbove){
+    spawn:function(cell,r,c,fromAbove,introDelay){
       var g=builders[cell.t](); var p=gridPos(r,c);
       g.position.set(p.x, fromAbove? 3.4 : 0.28, p.z);
       g.userData.targetY=0.28; g.userData.r=r; g.userData.c=c; g.userData.cellRef=cell;
+      /* v14 boot intro: when introDelay is given, the treat waits
+         invisible above the board until its stagger slot, then
+         falls with the bounce easing in syncPositions. introDelay
+         is only ever passed by the boot cascade — refill spawns
+         from collapse() keep the plain lerp drop. */
+      if(introDelay!=null){ g.visible=false; g.position.y=4.2;
+        g.userData.introFromY=4.2; g.userData.introStart=performance.now()+introDelay;
+        g.userData.introDur=460; }
       /* Bean, Cherries and Bomb are modelled face-front; lay them flat
          so their faces point up at the top-down camera. The Cupcake is
          modelled upright, so laying it flat the same way tips it onto
@@ -683,6 +700,17 @@ function makeThreeView(){
         var p=gridPos(r,c); cell.mesh.userData.r=r; cell.mesh.userData.c=c;
         cell.mesh.position.x+=(p.x-cell.mesh.position.x)*0.22;
         cell.mesh.position.z+=(p.z-cell.mesh.position.z)*0.22;
+        if(cell.mesh.userData.introStart!=null){
+          /* v14 intro fall: hold invisible until the stagger slot,
+             then ease from above the board down to the cell with a
+             settle bounce; once landed, hand Y back to the lerp. */
+          var nowI=performance.now(), tyI=cell.mesh.userData.targetY!=null?cell.mesh.userData.targetY:0.28;
+          if(nowI<cell.mesh.userData.introStart){ cell.mesh.visible=false; cell.mesh.position.y=cell.mesh.userData.introFromY; }
+          else { cell.mesh.visible=true;
+            var pr=(nowI-cell.mesh.userData.introStart)/cell.mesh.userData.introDur;
+            if(pr>=1){ cell.mesh.position.y=tyI; cell.mesh.userData.introStart=null; }
+            else cell.mesh.position.y=cell.mesh.userData.introFromY+(tyI-cell.mesh.userData.introFromY)*easeOutBounce(pr); }
+          continue; }
         var ty=cell.mesh.userData.targetY!=null?cell.mesh.userData.targetY:0.28;
         cell.mesh.position.y+=(ty-cell.mesh.position.y)*0.2; } } },
     setSelected:function(cell,on){ if(!cell||!cell.mesh) return; cell.mesh.userData.targetY=on?0.62:0.28;
@@ -747,8 +775,17 @@ function makeCanvasView(){
     cellPx=Math.max(18, Math.floor(Math.min(window.innerWidth/COLS, availH/ROWS))); ox=(window.innerWidth-cellPx*COLS)/2; oy=topPx+Math.max(0,(availH-cellPx*ROWS)/2); }
   layout(); window.addEventListener('resize',layout);
   var glyphs=['🫘','🧊','🥐','🍩','🍒','🧁','✦','★'];
+  function easeOutBounce2(x){ var n1=7.5625, d1=2.75;
+    if(x<1/d1) return n1*x*x;
+    if(x<2/d1) return n1*(x-=1.5/d1)*x+0.75;
+    if(x<2.5/d1) return n1*(x-=2.25/d1)*x+0.9375;
+    return n1*(x-=2.625/d1)*x+0.984375; }
   var api={ kind:'canvas', _hint:null,
-    spawn:function(){}, remove:function(){},
+    /* v14 boot intro: record the stagger timing on the cell; the
+       draw loop below drops the glyph in with the same bounce
+       easing as the 3D view. Plain spawns carry no timing. */
+    spawn:function(cell,r,c,fromAbove,introDelay){ if(cell&&introDelay!=null){ cell._introStart=Date.now()+introDelay; cell._introDur=460; } },
+    remove:function(cell){ if(cell){ cell._introStart=null; } },
     syncPositions:function(){}, setSelected:function(){},
     setHint:function(cells){ api._hint=cells?cells.slice():null; }, clearHint:function(){ api._hint=null; },
     popAnim:function(cells,done){ setTimeout(done,180); },
@@ -765,9 +802,18 @@ function makeCanvasView(){
       for(var r=0;r<ROWS;r++) for(var c=0;c<COLS;c++){ ctx.fillStyle=(r+c)%2?'#f3dfba':'#eccfa3';
         ctx.fillRect(ox+c*cellPx+2,oy+r*cellPx+2,cellPx-4,cellPx-4);
         var cell=grid[r]&&grid[r][c]; if(!cell) continue;
+        /* v14 intro: before its stagger slot the cell stays empty;
+           during the fall the glyph drops in from above the cell
+           with the bounce easing, then rests in place. */
+        var dyOff=0;
+        if(cell._introStart!=null){ var nowC=Date.now();
+          if(nowC<cell._introStart) continue;
+          var prC=(nowC-cell._introStart)/(cell._introDur||460);
+          if(prC>=1){ cell._introStart=null; }
+          else dyOff=-(1-easeOutBounce2(prC))*cellPx*2.2; }
         ctx.font=Math.floor(cellPx*0.62)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        if(cell.t>=BLAST){ ctx.fillStyle=CSS[cell.t]; ctx.beginPath(); ctx.arc(ox+(c+0.5)*cellPx,oy+(r+0.5)*cellPx,cellPx*0.34,0,7); ctx.fill(); ctx.fillStyle='#fff'; }
-        ctx.fillText(glyphs[cell.t], ox+(c+0.5)*cellPx, oy+(r+0.55)*cellPx);
+        if(cell.t>=BLAST){ ctx.fillStyle=CSS[cell.t]; ctx.beginPath(); ctx.arc(ox+(c+0.5)*cellPx,oy+(r+0.5)*cellPx+dyOff,cellPx*0.34,0,7); ctx.fill(); ctx.fillStyle='#fff'; }
+        ctx.fillText(glyphs[cell.t], ox+(c+0.5)*cellPx, oy+(r+0.55)*cellPx+dyOff);
         if(api._hint&&api._hint.some(function(p){ return p.r===r&&p.c===c; })){ var pu=0.5+0.5*Math.sin(Date.now()/140);
           ctx.fillStyle='rgba(255,150,20,'+(0.22+0.22*pu)+')'; ctx.fillRect(ox+c*cellPx+2,oy+r*cellPx+2,cellPx-4,cellPx-4);
           ctx.strokeStyle='#ff6a00'; ctx.lineWidth=4+3*pu; ctx.strokeRect(ox+c*cellPx+3,oy+r*cellPx+3,cellPx-6,cellPx-6); } }
@@ -781,6 +827,27 @@ function buildBoard(data,animateDrop){
   for(var r=0;r<ROWS;r++) for(var c=0;c<COLS;c++){ var old=grid[r]&&grid[r][c]; if(old) view.remove(old); }
   grid=[];
   for(var r2=0;r2<ROWS;r2++){ grid.push([]); for(var c2=0;c2<COLS;c2++){ var cell={t:data[r2][c2], mesh:null}; grid[r2].push(cell); view.spawn(cell,r2,c2,animateDrop); } }
+}
+/* ---------- v14 boot intro: empty board first, gems fall in ----------
+   At first paint the board is EMPTY: the tray, checker cells and
+   décor are part of the scene itself, so they render instantly,
+   but no gem mesh exists yet — the heavy 64-mesh build is exactly
+   what this build keeps out of the first paint. After the first
+   frame plus ~600 ms, spawnIntroBoard creates the gems above the
+   board and drops them in a staggered cascade (row-major stagger,
+   460 ms bounce-eased fall per gem, ~720 ms end to end), and only
+   then does the board accept input. No spinner, no loading text —
+   it reads as the treats being set out on the counter. */
+var bootIntroDone=false, introTimer=null, introSeq=0;
+function buildEmptyBoard(){
+  for(var r=0;r<ROWS;r++) for(var c=0;c<COLS;c++){ var old=grid[r]&&grid[r][c]; if(old) view.remove(old); }
+  grid=[];
+  for(var r2=0;r2<ROWS;r2++){ var row=[]; for(var c2=0;c2<COLS;c2++) row.push(null); grid.push(row); }
+}
+function spawnIntroBoard(data){
+  grid=[];
+  for(var r=0;r<ROWS;r++){ grid.push([]); for(var c=0;c<COLS;c++){ var cell={t:data[r][c], mesh:null}; grid[r].push(cell);
+    view.spawn(cell,r,c,true, r*28+c*9); } }
 }
 function ordersTotal(){ return (ORDER_BOOK[state.level]||ORDER_BOOK[0]).length; }
 function ordersServed(){ return state.orders? state.orders.served : 0; }
@@ -1074,12 +1141,41 @@ function serveCleared(units){
       renderOrders(); }, reduceMotion?150:2050); }
 }
 
-function startLevel(idx){
+function startLevel(idx,isBoot){
+  /* A restart during the boot cascade cancels it and deals a
+     normal board straight away — the intro is a first-paint test,
+     not a tax on every level start. introSeq invalidates any
+     intro callback still queued from the previous deal. */
+  introSeq++;
+  if(introTimer){ clearTimeout(introTimer); introTimer=null; bootIntroDone=true; isBoot=false; }
   state.level=idx; state.score=0; state.moves=LEVELS[idx].moves; state.won=false; state.over=false; state.busy=false;
   gesture=null;
   var data=newGridData(); var guard=0; while(!findPossibleMoveData(data)&&guard++<30) data=newGridData();
-  buildBoard(data,true);
   $('win-overlay').classList.remove('show'); $('lose-overlay').classList.remove('show');
+  if(isBoot&&!bootIntroDone){
+    /* v14: paint the level with an EMPTY board — top bar, order
+       trays and bottom bar all render now, gems do not exist yet.
+       Input stays locked (busy) until the cascade has landed. */
+    state.busy=true;
+    buildEmptyBoard();
+    updateHUD(); buildLevelMenu(); startOrders();
+    toast('Level '+(idx+1)+' · '+LEVELS[idx].name+' — serve all '+ordersTotal()+' orders');
+    var pending=data, seq=introSeq;
+    /* Wait for the first rendered frame, then ~600 ms more, so
+       the empty page is fully painted and settled before any gem
+       mesh is created. */
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      if(seq!==introSeq) return;
+      introTimer=setTimeout(function(){ introTimer=null;
+        if(seq!==introSeq) return;
+        spawnIntroBoard(pending);
+        /* Last gem: 7*28 + 7*9 stagger + 460 ms fall ≈ 720 ms. */
+        introTimer=setTimeout(function(){ introTimer=null; if(seq!==introSeq) return; bootIntroDone=true; state.busy=false; }, 800);
+      }, 600);
+    }); });
+    return;
+  }
+  buildBoard(data,true);
   updateHUD(); buildLevelMenu(); startOrders();
   toast('Level '+(idx+1)+' · '+LEVELS[idx].name+' — serve all '+ordersTotal()+' orders');
 }
@@ -1226,7 +1322,7 @@ window.__ccStart=function(){
   window.__ccView=view.kind;
   view.bind(onDown,onMove,onUp);
   buildLevelMenu();
-  startLevel(0);
+  startLevel(0,true); /* v14: boot deal — empty board first, gems cascade in */
   view.start();
   scheduleTopbarFix();
 };
