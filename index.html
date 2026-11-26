@@ -31,11 +31,13 @@
    the display-mode media query. When standalone, <html> gets the
    .standalone class and the CSS moves the whole top stack (info
    bar, order trays, combo pill) down by --pwa-top-shift: iOS 26
-   draws a Liquid Glass blur band across the top ~107pt of every
+   draws a Liquid Glass blur band across the top of every
    standalone web app and offers web pages no switch to hide it
    (native apps use scrollView.topEdgeEffect.isHidden; there is no
    CSS/JS equivalent), so the only remedy is to keep content out of
-   the band. In a browser tab nothing changes. The media-query
+   the band. Joe measured the band on his phone at ~40px deep
+   (ruler page, 2026-11-26), so the shift puts the top bar right
+   at ~40px. In a browser tab nothing changes. The media-query
    listener covers a mode change without reload and nudges both
    board views to re-measure the (moved) order-tray row. */
 (function(){
@@ -57,19 +59,20 @@
     --line:rgba(90,55,25,.16); --btn:#f3e6d3; --btn-h:#ead9bd; --accent:#e07b2a; --accent2:#2a9d8f;
     --shadow:0 10px 28px rgba(80,45,10,.22);
     /* Extra top offset for the whole top stack, standalone only
-       (see the detection script above): v8's 118px cleared the
-       measured ~107pt iOS 26 glass band but left the whole layout
-       sitting far too low on the phone — a big dead band above the
-       info bar (Joe's screenshot, 2026-11-26). v9 halves it to
-       56px: the info bar's top edge lands at ~62–66px, just below
-       the status bar and the strongest part of the glass gradient,
-       and the trays and board follow under it. The pure-CSS media
-       query is the no-JS twin of the .standalone class — either
-       one turns the shift on. */
+       (see the detection script above): v8's 118px and v9's 56px
+       both left the layout sitting too low. Joe measured the
+       iOS 26 glass band on his own phone with a ruler page
+       (2026-11-26): it ends at ~40px, so the top bars should
+       render right at ~40px. v10 sets the shift to 34px — on
+       phones (base top 6px) the info bar's top edge lands at
+       exactly 40px, just below the glass band, and the trays and
+       board follow under it. The pure-CSS media query is the
+       no-JS twin of the .standalone class — either one turns the
+       shift on. */
     --pwa-top-shift:0px;
   }
-  @media (display-mode: standalone){ :root{ --pwa-top-shift:56px; } }
-  html.standalone{ --pwa-top-shift:56px; }
+  @media (display-mode: standalone){ :root{ --pwa-top-shift:34px; } }
+  html.standalone{ --pwa-top-shift:34px; }
   @media (prefers-color-scheme: dark){
     :root{ --ink:#f7e9d7; --ink-dim:#c9a888; --plate:rgba(38,24,16,.92); --plate-solid:#2e1f14;
       --line:rgba(255,220,180,.16); --btn:#453122; --btn-h:#57402a; --shadow:0 10px 28px rgba(0,0,0,.5); }
@@ -272,7 +275,7 @@
     <b>🧾 Orders:</b> the trays above the board are customer orders, arriving in a set sequence. Each match serves one of its treats into a tray that needs it — clear three beans, serve one bean. Finish a tray and it stamps itself <b>✓ Shipped!</b>, flies out with a bonus, and the next order slides in — serve <b>every</b> order in the level's sequence before your moves run out to pass the level.<br>
     <b>⏱ Expiry (Level 2+):</b> Level 1 orders have no timer — take your time. From Level 2 up, the timer in a tray's lower-right corner counts down to when that order expires — it turns red for the last 10 seconds. An expired order leaves the counter, the next order takes its place, and the expired one comes back later in the sequence.
   </p>
-  <p class="build-mark">Coffee Crush · v9 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v10 · updated 2026-11-26</p>
 </div>
 
 <div id="menu-panel" class="plate" hidden>
@@ -285,7 +288,7 @@
     <button id="btn-help" class="icon-btn"><span class="btn-ico">?</span><span>Help</span></button>
     <button id="btn-new" class="icon-btn"><span class="btn-ico">✦</span><span>New board</span></button>
   </div>
-  <p class="build-mark">Coffee Crush · v9 · updated 2026-11-26</p>
+  <p class="build-mark">Coffee Crush · v10 · updated 2026-11-26</p>
 </div>
 
 <div class="overlay" id="win-overlay">
