@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<!-- PWA meta copied from the Coffee Crush game (index.html) so this page is
+     measured under the exact same standalone conditions as the games:
+     viewport-fit=cover, status-bar-style default.
+     THREE.JS variant: this page loads the REAL three.js library from the
+     repo's own assets/three.min.js (the same file the game uses) and builds
+     a scene that replicates the game's boot workload — a WebGL renderer with
+     antialias on, a perspective camera, and a grid of ~64 box meshes with
+     standard materials plus a ground plane, rendered continuously. Coffee
+     Crush v14 (empty board at first paint, gems falling in after a delay)
+     STILL blurs on Joe's phone, but v14 only deferred the 64 gem meshes;
+     the three.js library itself (~600KB inlined) still parses and boots at
+     first paint. Every ruler so far used a tiny raw-WebGL shader or a 2D
+     canvas and stayed sharp. By elimination, the three.js boot is now the
+     prime suspect: it is the one heavy first-paint difference between the
+     games and every sharp ruler. If this ruler blurs, the three.js boot is
+     the trigger; if it stays sharp, the three.js boot is ruled out too and
+     the difference is something else about the game itself.
+     This is the THREE.JS variant of topbar-ruler-manifest.html: same dark
+     #241610 background, same position:fixed HUD bar at top:40px with its
+     dark plate (rows 0-30 stay visible as fine text above it), same ruler
+     rows, same standalone YES/NO indicator, same manifest-install approach
+     (a separate assets/manifest-ruler-threejs.json pointing at THIS page).
+     The ONLY change from the manifest ruler is the canvas layer: raw-WebGL
+     shader replaced by a real three.js scene. -->
+<meta name="theme-color" content="#241610" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Glass-band ruler (three.js)" />
+<link rel="manifest" href="assets/manifest-ruler-threejs.json" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+<title>Glass-band ruler (three.js)</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#241610;color:#f5ead9;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  /* Full-screen live three.js canvas behind everything: a continuously
+     rendering scene under the top edge, exactly like the games' board. */
+  #gl{position:fixed;left:0;top:0;width:100%;height:100%;z-index:0;display:block;}
+  /* FIXED top bar, replicating the Coffee Crush HUD bar: position:fixed at
+     top:40px (moved down from top:0 so the top ruler rows stay visible as
+     fine text — at top:0 the bar covered rows 0-40 and the glass could not
+     be judged), dark plate, same text sizes/colors as the game's #info-bar
+     (.info-line1: font-weight 900, 13.5px on phones; .lvl #f2a35e,
+     .moves #4fd1c5 in dark mode; plate solid #2e1f14). It sits OVER the live
+     three.js canvas, exactly the games' structure. */
+  .fixedbar{position:fixed;top:40px;left:6px;right:6px;height:54px;z-index:30;
+    background:#2e1f14;border:1px solid rgba(245,234,217,.18);border-radius:14px;
+    box-shadow:0 4px 14px rgba(0,0,0,.35);box-sizing:border-box;
+    display:flex;align-items:center;justify-content:center;}
+  .fixedbar .info-line1{display:flex;justify-content:space-between;align-items:baseline;
+    gap:6px;width:100%;padding:0 16px;box-sizing:border-box;
+    font-weight:900;font-size:13.5px;color:#f5ead9;}
+  .fixedbar .lvl{color:#f2a35e;}
+  .fixedbar .moves{color:#4fd1c5;font-variant-numeric:tabular-nums;}
+  /* The ruler: one row every 10px, y=0..160. Identical glyphs in every row so
+     blur is judged on the same text at every height. The fixed bar sits at
+     top:40px, so rows 0-30 are fully visible above it; rows 40-90 sit behind
+     the bar, rows 100-160 stay visible below it. */
+  .ruler{position:fixed;left:0;right:0;top:0;height:170px;z-index:1;}
+  .row{position:absolute;left:0;right:0;height:10px;line-height:10px;font-size:9px;
+    color:#f5ead9;background:#241610;border-top:1px solid #f5ead9;box-sizing:border-box;
+    padding-left:6px;white-space:nowrap;overflow:hidden;}
+  /* Reference: dozzle's measured edge on a 16 Pro Max (~107pt). */
+  .ref107{position:absolute;left:0;right:0;top:107px;border-top:2px dashed #ff7a6b;}
+  .ref107 span{position:absolute;right:6px;top:-6px;background:#241610;color:#ff7a6b;
+    font-size:9px;line-height:11px;padding:0 4px;white-space:nowrap;}
+  /* Instructions live below the ruler, in the sharp zone. */
+  .howto{position:fixed;left:0;right:0;top:190px;padding:0 16px;font-size:15px;line-height:1.5;z-index:1;}
+  .howto h1{font-size:20px;margin:0 0 8px;}
+  .howto p{margin:8px 0;}
+  .marker{font-size:12px;font-weight:700;letter-spacing:.06em;opacity:.6;}
+  .mode{font-weight:700;}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="fixedbar">
+  <div class="info-line1"><span class="lvl">&#x2615; Level 1</span><span>&#x1F9FE; Orders 0/20</span><span class="moves">Moves 45</span></div>
+</div>
+<div class="ruler">
+  <div class="row" style="top:0px">0 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:10px">10 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:20px">20 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:30px">30 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:40px">40 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:50px">50 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:60px">60 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:70px">70 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:80px">80 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:90px">90 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:100px">100 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:110px">110 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:120px">120 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:130px">130 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:140px">140 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:150px">150 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:160px">160 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="ref107"><span>107 pt (dozzle&rsquo;s measured edge)</span></div>
+</div>
+<div class="howto">
+  <h1>Glass-band ruler (three.js)</h1>
+  <p>Is the <b>FIXED bar blurry</b> while the rows below are sharp?
+  Reply: fixed bar <b>blurry/sharp</b>, plus the lowest blurry row and first sharp row
+  (e.g. fixed bar blurry, rows blurry up to 70, sharp from 80).
+  The bar sits at 40px (just below the measured glass edge) so the
+  top rows 0&ndash;30 are uncovered fine text. Behind the bar is a real
+  three.js scene &mdash; the same library and a similar 8&times;8 mesh grid
+  as the game board &mdash; so this tests whether the three.js boot itself
+  triggers the glass.</p>
+  <p>Standalone PWA mode: <span class="mode" id="mode">checking&hellip;</span></p>
+  <p>three.js: <span class="mode" id="threejs">checking&hellip;</span></p>
+  <p>Test as a <b>fresh PWA install</b>: delete the old home-screen icon and re-add this page from Safari.
+  In a Safari tab this measures Safari&rsquo;s toolbar glass, not the PWA band.</p>
+  <p class="marker">Glass-band ruler (three.js) &middot; 2026-11-26</p>
+</div>
+<script src="assets/three.min.js"></script>
+<script>
+  // Confirm the page really launched as an installed PWA (standalone), not a tab.
+  var standalone = (window.navigator && window.navigator.standalone === true) ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  document.getElementById('mode').textContent = standalone ? 'YES' : 'NO (you are in a Safari tab)';
+
+  // Full-screen continuously-rendering three.js scene, replicating the
+  // game's boot workload: the real three.js library, a WebGL renderer with
+  // antialias on, a perspective camera, and an 8x8 grid of box meshes with
+  // standard materials (like the game's gems) plus a ground plane and
+  // lights, rendered forever via rAF. Only the classic three.js API is
+  // used, so this works with any bundled three.min.js revision.
+  var statusEl = document.getElementById('threejs');
+  try {
+    if (typeof THREE === 'undefined') {
+      throw new Error('THREE failed to load');
+    }
+    var cv = document.getElementById('gl');
+    var renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    var scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x241610);
+    var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    camera.position.set(0, 7.5, 9);
+    camera.lookAt(0, 0, 0);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    var sun = new THREE.DirectionalLight(0xfff2dd, 1.1);
+    sun.position.set(4, 8, 5);
+    scene.add(sun);
+    var board = new THREE.Group();
+    scene.add(board);
+    // Ground plane (the board base).
+    var ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(9.6, 9.6),
+      new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 0.9, metalness: 0 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.55;
+    board.add(ground);
+    // 8x8 grid of gem-like boxes in warm coffee-shop colours.
+    var palette = [0xe07b2a, 0xf2a541, 0xd94f30, 0x4fd1c5, 0xf5ead9, 0x8a5a2b, 0xc96f4a, 0x7fb069];
+    var geo = new THREE.BoxGeometry(0.92, 0.92, 0.92);
+    for (var r = 0; r < 8; r++) {
+      for (var c = 0; c < 8; c++) {
+        var mat = new THREE.MeshStandardMaterial({
+          color: palette[(r * 8 + c) % palette.length],
+          roughness: 0.45, metalness: 0.05
+        });
+        var gem = new THREE.Mesh(geo, mat);
+        gem.position.set((c - 3.5) * 1.08, 0, (r - 3.5) * 1.08);
+        board.add(gem);
+      }
+    }
+    function size() {
+      var w = window.innerWidth, h = window.innerHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', size);
+    size();
+    statusEl.textContent = 'rendering';
+    var t0 = performance.now();
+    function frame(now) {
+      var t = (now - t0) / 1000;
+      board.rotation.y = Math.sin(t * 0.25) * 0.35;
+      board.rotation.x = Math.sin(t * 0.18) * 0.08;
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  } catch (err) {
+    statusEl.textContent = 'FAILED — test is void, please report this';
+  }
+</script>
+</body>
+</html>
