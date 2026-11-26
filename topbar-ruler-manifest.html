@@ -39,11 +39,13 @@
      break on a missing script. */
   #gl{position:fixed;left:0;top:0;width:100%;height:100%;z-index:0;display:block;}
   /* FIXED top bar, replicating the Coffee Crush HUD bar: position:fixed at
-     top:0, dark plate, same text sizes/colors as the game's #info-bar
+     top:40px (moved down from top:0 so the top ruler rows stay visible as
+     fine text — at top:0 the bar covered rows 0-40 and the glass could not
+     be judged), dark plate, same text sizes/colors as the game's #info-bar
      (.info-line1: font-weight 900, 13.5px on phones; .lvl #f2a35e,
      .moves #4fd1c5 in dark mode; plate solid #2e1f14). It sits OVER the live
      WebGL canvas, exactly the games' structure. */
-  .fixedbar{position:fixed;top:0;left:6px;right:6px;height:54px;z-index:30;
+  .fixedbar{position:fixed;top:40px;left:6px;right:6px;height:54px;z-index:30;
     background:#2e1f14;border:1px solid rgba(245,234,217,.18);border-radius:14px;
     box-shadow:0 4px 14px rgba(0,0,0,.35);box-sizing:border-box;
     display:flex;align-items:center;justify-content:center;}
@@ -53,8 +55,9 @@
   .fixedbar .lvl{color:#f2a35e;}
   .fixedbar .moves{color:#4fd1c5;font-variant-numeric:tabular-nums;}
   /* The ruler: one row every 10px, y=0..160. Identical glyphs in every row so
-     blur is judged on the same text at every height. The fixed bar overlays
-     rows 0-50; rows 60-160 stay visible for comparison. */
+     blur is judged on the same text at every height. The fixed bar now sits
+     at top:40px, so rows 0-30 are fully visible above it; rows 40-90 sit
+     behind the bar, rows 100-160 stay visible below it. */
   .ruler{position:fixed;left:0;right:0;top:0;height:170px;z-index:1;}
   .row{position:absolute;left:0;right:0;height:10px;line-height:10px;font-size:9px;
     color:#f5ead9;background:#241610;border-top:1px solid #f5ead9;box-sizing:border-box;
@@ -100,12 +103,15 @@
   <h1>Glass-band ruler (manifest-installed)</h1>
   <p>Is the <b>FIXED bar blurry</b> while the rows below are sharp?
   Reply: fixed bar <b>blurry/sharp</b>, plus the lowest blurry row and first sharp row
-  (e.g. fixed bar blurry, rows blurry up to 70, sharp from 80).</p>
+  (e.g. fixed bar blurry, rows blurry up to 70, sharp from 80).
+  The bar was moved down to 40px (just below the measured glass edge) so the
+  top rows 0&ndash;30 are uncovered fine text &mdash; at top:0 the
+  bar hid rows 0&ndash;40 and the glass could not be judged.</p>
   <p>Standalone PWA mode: <span class="mode" id="mode">checking&hellip;</span></p>
   <p>WebGL: <span class="mode" id="webgl">checking&hellip;</span></p>
   <p>Test as a <b>fresh PWA install</b>: delete the old home-screen icon and re-add this page from Safari.
   In a Safari tab this measures Safari&rsquo;s toolbar glass, not the PWA band.</p>
-  <p class="marker">Glass-band ruler (manifest-installed) &middot; 2026-11-26</p>
+  <p class="marker">Glass-band ruler (manifest-installed, bar at 40px) &middot; 2026-11-26</p>
 </div>
 <script>
   // Confirm the page really launched as an installed PWA (standalone), not a tab.
