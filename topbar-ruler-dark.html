@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<!-- PWA meta copied from the Coffee Crush game (index.html) so this page is
+     measured under the exact same standalone conditions as the games:
+     viewport-fit=cover, status-bar-style default.
+     Deliberately NO manifest link: the game's manifest start_url points at
+     index.html, so linking it would make a home-screen install launch the
+     game instead of this ruler. iOS standalone comes from
+     apple-mobile-web-app-capable below; the touch icon is kept so the
+     home-screen icon looks right.
+     This is the DARK variant of topbar-ruler.html: page background #241610,
+     the same dark brown as Coffee Crush's dark-mode scene, to test Joe's
+     hypothesis that the iOS glass effect is disabled on a white background.
+     No canvas — this variant isolates background color only. -->
+<meta name="theme-color" content="#241610" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Glass-band ruler (dark)" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+<title>Glass-band ruler (dark)</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#241610;color:#f5ead9;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  /* The ruler: one row every 10px, y=0..160. Identical glyphs in every row so
+     blur is judged on the same text at every height. */
+  .ruler{position:fixed;left:0;right:0;top:0;height:170px;}
+  .row{position:absolute;left:0;right:0;height:10px;line-height:10px;font-size:9px;
+    color:#f5ead9;background:#241610;border-top:1px solid #f5ead9;box-sizing:border-box;
+    padding-left:6px;white-space:nowrap;overflow:hidden;}
+  /* Reference: dozzle's measured edge on a 16 Pro Max (~107pt). */
+  .ref107{position:absolute;left:0;right:0;top:107px;border-top:2px dashed #ff7a6b;}
+  .ref107 span{position:absolute;right:6px;top:-6px;background:#241610;color:#ff7a6b;
+    font-size:9px;line-height:11px;padding:0 4px;white-space:nowrap;}
+  /* Instructions live below the ruler, in the sharp zone. Nothing but the
+     ruler sits at the top of the page. */
+  .howto{position:fixed;left:0;right:0;top:190px;padding:0 16px;font-size:15px;line-height:1.5;}
+  .howto h1{font-size:20px;margin:0 0 8px;}
+  .howto p{margin:8px 0;}
+  .marker{font-size:12px;font-weight:700;letter-spacing:.06em;opacity:.6;}
+  .mode{font-weight:700;}
+</style>
+</head>
+<body>
+<div class="ruler">
+  <div class="row" style="top:0px">0 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:10px">10 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:20px">20 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:30px">30 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:40px">40 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:50px">50 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:60px">60 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:70px">70 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:80px">80 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:90px">90 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:100px">100 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:110px">110 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:120px">120 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:130px">130 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:140px">140 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:150px">150 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:160px">160 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="ref107"><span>107 pt (dozzle&rsquo;s measured edge)</span></div>
+</div>
+<div class="howto">
+  <h1>Glass-band ruler (dark background)</h1>
+  <p>Find the <b>lowest row that still looks blurry</b>, and the <b>first row that looks sharp</b>.
+  Reply with those two numbers (e.g. blurry up to 70, sharp from 80).
+  That is the exact glass edge on this phone.</p>
+  <p>Standalone PWA mode: <span class="mode" id="mode">checking&hellip;</span></p>
+  <p>Test as a <b>fresh PWA install</b>: delete the old home-screen icon and re-add this page from Safari.
+  In a Safari tab this measures Safari&rsquo;s toolbar glass, not the PWA band.</p>
+  <p class="marker">Glass-band ruler (dark background) &middot; 2026-11-26</p>
+</div>
+<script>
+  // Confirm the page really launched as an installed PWA (standalone), not a tab.
+  var standalone = (window.navigator && window.navigator.standalone === true) ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  document.getElementById('mode').textContent = standalone ? 'YES' : 'NO (you are in a Safari tab)';
+</script>
+</body>
+</html>
