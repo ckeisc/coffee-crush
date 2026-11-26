@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<!-- PWA meta copied from the Coffee Crush game (index.html) so this page is
+     measured under the exact same standalone conditions as the games:
+     viewport-fit=cover, status-bar-style default.
+     MANIFEST variant: this page DOES link a manifest — a separate
+     assets/manifest-ruler.json that copies the game's manifest (display
+     standalone, same theme/background colors and icons) but with
+     start_url pointing at THIS page. The ONLY difference from the
+     WebGL-backed ruler is "installed via manifest" vs "installed via
+     meta tags only". The touch icon is kept so the home-screen icon
+     looks right.
+     This is the MANIFEST variant of topbar-ruler-webgl.html: same dark #241610
+     background, same position:fixed HUD bar with its dark plate, same ruler
+     rows, same full-screen live RAW WebGL canvas behind everything.
+     Coffee Crush v11 stripped EVERY compositing hack and STILL blurs as an
+     installed PWA, while the WebGL ruler (no manifest) is sharp — so the
+     hacks were not the cause. The biggest remaining structural difference
+     is the manifest install. If this ruler blurs, manifest install is the
+     trigger; if it stays sharp, the manifest is ruled out too. -->
+<meta name="theme-color" content="#241610" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Glass-band ruler (manifest)" />
+<link rel="manifest" href="assets/manifest-ruler.json" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+<title>Glass-band ruler (manifest-installed)</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#241610;color:#f5ead9;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  /* Full-screen live RAW WebGL canvas behind everything: a continuously
+     rendering animated scene under the top edge, exactly like the games'
+     three.js board. Raw WebGL, no library dependency, so this page cannot
+     break on a missing script. */
+  #gl{position:fixed;left:0;top:0;width:100%;height:100%;z-index:0;display:block;}
+  /* FIXED top bar, replicating the Coffee Crush HUD bar: position:fixed at
+     top:0, dark plate, same text sizes/colors as the game's #info-bar
+     (.info-line1: font-weight 900, 13.5px on phones; .lvl #f2a35e,
+     .moves #4fd1c5 in dark mode; plate solid #2e1f14). It sits OVER the live
+     WebGL canvas, exactly the games' structure. */
+  .fixedbar{position:fixed;top:0;left:6px;right:6px;height:54px;z-index:30;
+    background:#2e1f14;border:1px solid rgba(245,234,217,.18);border-radius:14px;
+    box-shadow:0 4px 14px rgba(0,0,0,.35);box-sizing:border-box;
+    display:flex;align-items:center;justify-content:center;}
+  .fixedbar .info-line1{display:flex;justify-content:space-between;align-items:baseline;
+    gap:6px;width:100%;padding:0 16px;box-sizing:border-box;
+    font-weight:900;font-size:13.5px;color:#f5ead9;}
+  .fixedbar .lvl{color:#f2a35e;}
+  .fixedbar .moves{color:#4fd1c5;font-variant-numeric:tabular-nums;}
+  /* The ruler: one row every 10px, y=0..160. Identical glyphs in every row so
+     blur is judged on the same text at every height. The fixed bar overlays
+     rows 0-50; rows 60-160 stay visible for comparison. */
+  .ruler{position:fixed;left:0;right:0;top:0;height:170px;z-index:1;}
+  .row{position:absolute;left:0;right:0;height:10px;line-height:10px;font-size:9px;
+    color:#f5ead9;background:#241610;border-top:1px solid #f5ead9;box-sizing:border-box;
+    padding-left:6px;white-space:nowrap;overflow:hidden;}
+  /* Reference: dozzle's measured edge on a 16 Pro Max (~107pt). */
+  .ref107{position:absolute;left:0;right:0;top:107px;border-top:2px dashed #ff7a6b;}
+  .ref107 span{position:absolute;right:6px;top:-6px;background:#241610;color:#ff7a6b;
+    font-size:9px;line-height:11px;padding:0 4px;white-space:nowrap;}
+  /* Instructions live below the ruler, in the sharp zone. */
+  .howto{position:fixed;left:0;right:0;top:190px;padding:0 16px;font-size:15px;line-height:1.5;z-index:1;}
+  .howto h1{font-size:20px;margin:0 0 8px;}
+  .howto p{margin:8px 0;}
+  .marker{font-size:12px;font-weight:700;letter-spacing:.06em;opacity:.6;}
+  .mode{font-weight:700;}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="fixedbar">
+  <div class="info-line1"><span class="lvl">&#x2615; Level 1</span><span>&#x1F9FE; Orders 0/20</span><span class="moves">Moves 45</span></div>
+</div>
+<div class="ruler">
+  <div class="row" style="top:0px">0 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:10px">10 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:20px">20 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:30px">30 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:40px">40 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:50px">50 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:60px">60 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:70px">70 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:80px">80 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:90px">90 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:100px">100 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:110px">110 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:120px">120 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:130px">130 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:140px">140 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:150px">150 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="row" style="top:160px">160 px &mdash; abcdefghijklmnopqrstuvwxyz</div>
+  <div class="ref107"><span>107 pt (dozzle&rsquo;s measured edge)</span></div>
+</div>
+<div class="howto">
+  <h1>Glass-band ruler (manifest-installed)</h1>
+  <p>Is the <b>FIXED bar blurry</b> while the rows below are sharp?
+  Reply: fixed bar <b>blurry/sharp</b>, plus the lowest blurry row and first sharp row
+  (e.g. fixed bar blurry, rows blurry up to 70, sharp from 80).</p>
+  <p>Standalone PWA mode: <span class="mode" id="mode">checking&hellip;</span></p>
+  <p>WebGL: <span class="mode" id="webgl">checking&hellip;</span></p>
+  <p>Test as a <b>fresh PWA install</b>: delete the old home-screen icon and re-add this page from Safari.
+  In a Safari tab this measures Safari&rsquo;s toolbar glass, not the PWA band.</p>
+  <p class="marker">Glass-band ruler (manifest-installed) &middot; 2026-11-26</p>
+</div>
+<script>
+  // Confirm the page really launched as an installed PWA (standalone), not a tab.
+  var standalone = (window.navigator && window.navigator.standalone === true) ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  document.getElementById('mode').textContent = standalone ? 'YES' : 'NO (you are in a Safari tab)';
+
+  // Full-screen continuously-rendering RAW WebGL scene, like a game board:
+  // a fullscreen triangle whose fragment shader paints drifting warm blobs
+  // over the dark #241610 base. No library dependency. Runs forever via rAF.
+  var cv = document.getElementById('gl');
+  var gl = cv.getContext('webgl', { antialias: true }) ||
+           cv.getContext('experimental-webgl');
+  var glStatus = document.getElementById('webgl');
+  if (!gl) {
+    glStatus.textContent = 'UNAVAILABLE — test is void, please report this';
+  } else {
+    glStatus.textContent = 'rendering';
+    var vsrc = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+    var fsrc = 'precision mediump float;uniform vec2 r;uniform float t;'
+      + 'void main(){vec2 uv=gl_FragCoord.xy/r;'
+      + 'vec3 c=vec3(0.14,0.09,0.06);'
+      + 'c+=vec3(0.55,0.25,0.05)*0.35*(0.5+0.5*sin(uv.x*6.0+t*0.7+sin(uv.y*5.0+t*0.5)));'
+      + 'c+=vec3(0.10,0.40,0.50)*0.30*(0.5+0.5*sin((uv.x+uv.y)*7.0-t*0.9));'
+      + 'c+=vec3(0.90,0.70,0.20)*0.25*(0.5+0.5*sin(uv.y*8.0+t*1.1+uv.x*3.0));'
+      + 'gl_FragColor=vec4(c,1.0);}';
+    function shader(type, src) {
+      var s = gl.createShader(type);
+      gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        glStatus.textContent = 'SHADER ERROR — test is void, please report this';
+      }
+      return s;
+    }
+    var prog = gl.createProgram();
+    gl.attachShader(prog, shader(gl.VERTEX_SHADER, vsrc));
+    gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, fsrc));
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+    var buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    var loc = gl.getAttribLocation(prog, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    var uR = gl.getUniformLocation(prog, 'r');
+    var uT = gl.getUniformLocation(prog, 't');
+    function size() {
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = Math.round(window.innerWidth * dpr);
+      cv.height = Math.round(window.innerHeight * dpr);
+      gl.viewport(0, 0, cv.width, cv.height);
+      gl.uniform2f(uR, cv.width, cv.height);
+    }
+    window.addEventListener('resize', size);
+    size();
+    var t0 = performance.now();
+    function frame(now) {
+      gl.uniform1f(uT, (now - t0) / 1000);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+</script>
+</body>
+</html>
